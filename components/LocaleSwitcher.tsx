@@ -11,14 +11,14 @@ export default function LocaleSwitcher() {
   const cleaned = pathname.replace(/^\/(en|zh)(?=\/|$)/, "") || "/"
 
   return (
-    <div className="fixed bottom-4 inset-x-0 flex justify-center gap-3">
+    <div className="flex items-center gap-1">
       {locales.map((loc) => {
         const href = `/${loc}${cleaned}`
         return (
           <Link
             key={loc}
             href={href}
-            className="rounded-full border px-3 py-1 text-sm bg-white/80 backdrop-blur shadow"
+            className="rounded-md border px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
           >
             {loc.toUpperCase()}
           </Link>
