@@ -1,0 +1,54 @@
+// prisma/schema.prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// npm run prisma:reset
+// npm run prisma:migrate -- --name init
+// npm run prisma:generate
+
+
+
+model User {
+  id         String        @id @default(cuid())
+  email      String        @unique
+  name       String?
+  imageUrl   String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  memberships GroupMember[]
+}
+
+model Group {
+  id          String        @id @default(cuid())
+  name        String
+  slug        String        @unique
+  createdById String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  members     GroupMember[]
+}
+
+model GroupMember {
+  id       String   @id @default(cuid())
+  groupId  String
+  userId   String
+  role     MemberRole @default(MEMBER)
+
+  group    Group   @relation(fields: [groupId], references: [id])
+  user     User    @relation(fields: [userId], references: [id])
+
+  @@unique([groupId, userId])
+}
+
+enum MemberRole {
+  ADMIN
+  MEMBER
+}

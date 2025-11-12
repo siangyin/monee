@@ -17,7 +17,7 @@ export default function BottomNav() {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 border-t bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+    <nav className="fixed bottom-0 left-0 right-0 border-t bg-white/80 backdrop-blur supports-backdrop-filter:bg-white/60">
       <div className="mx-auto max-w-md flex justify-around py-2">
         {nav.map((item) => {
           const active = pathname === item.href
