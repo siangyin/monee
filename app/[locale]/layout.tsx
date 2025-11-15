@@ -10,6 +10,7 @@ import TopNav from "@/components/TopNav"
 import AppHeader from "@/components/app/AppHeader"
 
 import "../globals.css"
+import ToasterHost from "@/components/ToasterHost"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -42,6 +43,7 @@ export default async function LocaleLayout({ children, params }: PageProps) {
         <head />
         <body className={inter.className}>
           <NextIntlClientProvider locale={locale} messages={messages}>
+            <ToasterHost />
             <AppHeader locale={locale} />
             <TopNav />
             <div className="mx-auto max-w-6xl px-6">

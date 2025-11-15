@@ -13,6 +13,7 @@ export default function TopNav() {
 
   const links = [
     { href: `${base}`, label: "Home", icon: Home },
+    { href: `${base}/expenses`, label: "Expenses", icon: Wallet2 },
     { href: `${base}/groups`, label: "Groups", icon: Users },
     { href: `${base}/profile`, label: "Profile", icon: User },
   ]

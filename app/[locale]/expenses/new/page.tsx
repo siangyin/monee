@@ -1,0 +1,21 @@
+// app/[locale]/expenses/new/page.tsx
+import { type Locale } from "@/i18n"
+import ExpenseForm from "@/components/expenses/ExpenseForm"
+import { getDemoUserWithCategories } from "@/lib/demoData"
+
+export default async function NewExpensePage({
+  params,
+}: {
+  params: Promise<{ locale: Locale }>
+}) {
+  const { locale } = await params
+  const { categories } = await getDemoUserWithCategories()
+
+  return (
+    <main className="space-y-4">
+      <h1 className="text-2xl md:text-3xl font-semibold">New expense</h1>
+      <p className="text-sm text-gray-600">Add a personal expense.</p>
+      <ExpenseForm locale={locale} mode="create" categories={categories} />
+    </main>
+  )
+}
