@@ -1,0 +1,12 @@
+{
+  "common": {
+    "appName": "Monee",
+    "dashboard": "Dashboard",
+    "groups": "Groups",
+    "settings": "Settings",
+    "language": "Language"
+  },
+  "dashboard": {
+    "title": "Overview"
+  }
+}

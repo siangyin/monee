@@ -1,0 +1,12 @@
+{
+  "common": {
+    "appName": "Monee",
+    "dashboard": "首页",
+    "groups": "群组",
+    "settings": "设置",
+    "language": "语言"
+  },
+  "dashboard": {
+    "title": "总览"
+  }
+}
