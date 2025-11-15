@@ -7,7 +7,7 @@ import { Inter } from "next/font/google"
 import { Metadata } from "next"
 
 import TopNav from "@/components/TopNav"
-import AppHeader from "@/components/app/AppHeader"
+// import AppHeader from "@/components/app/AppHeader"
 
 import "../globals.css"
 import ToasterHost from "@/components/ToasterHost"
@@ -44,7 +44,7 @@ export default async function LocaleLayout({ children, params }: PageProps) {
         <body className={inter.className}>
           <NextIntlClientProvider locale={locale} messages={messages}>
             <ToasterHost />
-            <AppHeader locale={locale} />
+            {/* <AppHeader locale={locale} /> */}
             <TopNav />
             <div className="mx-auto max-w-6xl px-6">
               <div className="py-6 md:py-8 lg:py-10 min-h-dvh">{children}</div>

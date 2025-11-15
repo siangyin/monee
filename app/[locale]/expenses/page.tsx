@@ -3,9 +3,9 @@ import Link from "next/link"
 import { prisma } from "@/lib/prisma"
 import { type Locale } from "@/i18n"
 
-import { getDemoUserWithCategories } from "@/lib/demoData"
 import DeleteExpenseButton from "@/components/expenses/DeleteExpenseButton"
 import CategoryTag from "@/components/CategoryTag"
+import { getAuthUserWithCategories } from "@/lib/authUser"
 
 type PageProps = {
   params: Promise<{ locale: Locale }>
@@ -22,8 +22,7 @@ export default async function ExpensesPage({
   const { locale } = await params
   const { month = "all", category = "all" } = await searchParams
 
-  // Get demo user + categories
-  const { user, categories } = await getDemoUserWithCategories()
+  const { user, categories } = await getAuthUserWithCategories()
 
   // Build WHERE filter object
   const where: any = {
@@ -97,9 +96,7 @@ export default async function ExpensesPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold">Summary</h1>
-          <p className="text-sm text-gray-600">
-            Personal spending overview (demo user).
-          </p>
+          <p className="text-sm text-gray-600">Personal spending overview.</p>
         </div>
 
         {/* Summary pill on the right (desktop), will stack on mobile */}

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { type Locale } from "@/i18n"
 import ExpenseForm from "@/components/expenses/ExpenseForm"
 import { expenseCurrencies } from "@/lib/validation/expense"
+import { auth } from "@clerk/nextjs/server"
 
 export default async function EditExpensePage({
   params,
@@ -19,8 +20,23 @@ export default async function EditExpensePage({
     notFound()
   }
 
+  const { userId } = await auth()
+  if (!userId) {
+    // not signed in → let our auth flow handle it by redirecting
+    // (you could also redirect("/sign-in") here if you like)
+    notFound()
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { clerkId: userId },
+  })
+
+  if (!user) {
+    notFound()
+  }
+
   const expense = await prisma.expense.findUnique({
-    where: { id },
+    where: { id, userId: user.id },
     include: {
       photoRef: true,
     },
@@ -32,7 +48,7 @@ export default async function EditExpensePage({
 
   const categories = await prisma.category.findMany({
     where: {
-      userId: expense.userId,
+      userId: user.id,
       isActive: true,
     },
     orderBy: { name: "asc" },

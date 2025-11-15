@@ -1,7 +1,7 @@
 // app/[locale]/expenses/new/page.tsx
 import { type Locale } from "@/i18n"
 import ExpenseForm from "@/components/expenses/ExpenseForm"
-import { getDemoUserWithCategories } from "@/lib/demoData"
+import { getAuthUserWithCategories } from "@/lib/authUser"
 
 export default async function NewExpensePage({
   params,
@@ -9,7 +9,7 @@ export default async function NewExpensePage({
   params: Promise<{ locale: Locale }>
 }) {
   const { locale } = await params
-  const { categories } = await getDemoUserWithCategories()
+  const { categories } = await getAuthUserWithCategories()
 
   return (
     <main className="space-y-4">

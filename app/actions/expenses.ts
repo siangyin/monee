@@ -7,11 +7,23 @@ import {
   createExpenseSchema,
   type CreateExpenseInput,
 } from "@/lib/validation/expense"
-import { getDemoUserWithCategories } from "@/lib/demoData"
+import { auth } from "@clerk/nextjs/server"
 
 
 export async function createExpense(locale: string, input: CreateExpenseInput) {
-  const { user } = await getDemoUserWithCategories()
+  const { userId } = await auth()
+  if (!userId) {
+    throw new Error("Not authenticated")
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { clerkId: userId },
+  })
+
+  if (!user) {
+    throw new Error("User not found in database")
+  }
+
 
   const data = createExpenseSchema.parse(input)
 
@@ -60,6 +72,30 @@ export async function updateExpense(
   id: string,
   input: CreateExpenseInput
 ) {
+  const { userId } = await auth()
+  if (!userId) {
+    throw new Error("Not authenticated")
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { clerkId: userId },
+  })
+
+  if (!user) {
+    throw new Error("User not found in database")
+  }
+
+  const existing = await prisma.expense.findFirst({
+    where: {
+      id,
+      userId: user.id,
+    },
+  })
+
+  if (!existing) {
+    throw new Error("Expense not found or not owned by this user")
+  }
+
   const data = createExpenseSchema.parse(input)
 
   let categoryName: string | null = null
@@ -104,8 +140,23 @@ export async function updateExpense(
 
 
 export async function deleteExpense(locale: string, id: string) {
-  // TODO later: check that the expense belongs to the current user
-  await prisma.expense.delete({
-    where: { id },
+  const { userId } = await auth()
+  if (!userId) {
+    throw new Error("Not authenticated")
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { clerkId: userId },
+  })
+
+  if (!user) {
+    throw new Error("User not found")
+  }
+
+  await prisma.expense.deleteMany({
+    where: {
+      id,
+      userId: user.id,
+    },
   })
 }
