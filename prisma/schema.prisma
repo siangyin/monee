@@ -38,7 +38,8 @@ model User {
   memberships   GroupMember[]
   expenses      Expense[]     // personal expenses authored by this user
   category      Category[]
-  shares         ExpenseShare[]
+  shares        ExpenseShare[]
+  FxRates       FxRate[]  
 }
 
 model Group {
@@ -149,13 +150,17 @@ model PhotoRef {
   @@index([expenseId])
 }
 
-/* ---------- Optional reference rates (Phase 4, kept now for completeness) ---------- */
 model FxRate {
   id        String   @id @default(cuid())
-  base      String   // e.g., "SGD"
-  quote     String   // e.g., "JPY"
-  rate      Decimal  @db.Decimal(18, 8)
+  userId    String?
+  base      String   // e.g. "SGD" (your base currency)
+  quote     String   // e.g. "JPY" (spending currency)
+  rate      Decimal  @db.Decimal(18, 8) // 1 QUOTE = rate BASE
   asOfDate  DateTime @default(now())
 
+  user      User?    @relation(fields: [userId], references: [id])
+
   @@index([base, quote, asOfDate])
+  @@index([userId])
+  @@unique([userId, base, quote])
 }

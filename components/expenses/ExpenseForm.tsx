@@ -59,7 +59,7 @@ export default function ExpenseForm({
           date: initialData.date,
           categoryId: initialData.categoryId ?? null,
           note: initialData.note ?? "",
-          photoUrl: initialData.photoUrl ?? null,
+          photoUrl: initialData.photoUrl ?? undefined,
         }
       : {
           title: "",
@@ -69,7 +69,7 @@ export default function ExpenseForm({
           date: new Date().toISOString().slice(0, 10),
           categoryId: null,
           note: "",
-          photoUrl: null,
+          photoUrl: undefined,
         },
   })
 

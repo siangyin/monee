@@ -231,6 +231,104 @@ export default async function GroupDetailPage({ params }: PageProps) {
                 </select>
               </div>
 
+              {/* Split mode + Percent + Manual details */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs text-gray-600">
+                    Split mode
+                  </label>
+                  <span className="text-[10px] text-gray-400">
+                    Equal is the default. Use Percent or Manual when needed.
+                  </span>
+                </div>
+
+                {/* Real splitMode control */}
+                <select
+                  name="splitMode"
+                  defaultValue="EQUAL"
+                  className="w-full rounded-md border px-3 py-2 text-sm"
+                >
+                  <option value="EQUAL">Equal between all members</option>
+                  <option value="PERCENT">Percent by person</option>
+                  <option value="MANUAL">Manual amounts</option>
+                </select>
+
+                {/* Percent per member inputs */}
+                <div className="rounded-md border bg-gray-50 px-3 py-2 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-medium text-gray-700">
+                      Percent per member (when using Percent)
+                    </span>
+                    <span className="text-[10px] text-gray-500">
+                      We&apos;ll normalise – aim for around 100% total.
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {members.map((m) => (
+                      <div
+                        key={m.userId}
+                        className="flex items-center justify-between gap-2"
+                      >
+                        <span className="text-xs text-gray-700 truncate">
+                          {m.user.name || m.user.email}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            name={`percent_${m.userId}`}
+                            min="0"
+                            step="0.01"
+                            placeholder="0"
+                            className="w-16 rounded-md border px-2 py-1 text-xs text-right"
+                          />
+                          <span className="text-[11px] text-gray-500">%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Manual per member inputs */}
+                <div className="rounded-md border bg-gray-50 px-3 py-2 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-medium text-gray-700">
+                      Manual amounts (when using Manual)
+                    </span>
+                    <span className="text-[10px] text-gray-500">
+                      Enter amounts in {group.defaultCurr}. We&apos;ll check the
+                      total.
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {members.map((m) => (
+                      <div
+                        key={m.userId}
+                        className="flex items-center justify-between gap-2"
+                      >
+                        <span className="text-xs text-gray-700 truncate">
+                          {m.user.name || m.user.email}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            name={`manual_${m.userId}`}
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            className="w-20 rounded-md border px-2 py-1 text-xs text-right"
+                          />
+                          <span className="text-[11px] text-gray-500">
+                            {group.defaultCurr}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-1">
                 <label className="block text-xs text-gray-600">
                   Note (optional)
@@ -287,13 +385,13 @@ export default async function GroupDetailPage({ params }: PageProps) {
                       </div>
 
                       {/* Edit link */}
-                      <Link
+                      {/* <Link
                         href={`/${locale}/expenses/edit?id=${e.id}&groupId=${group.id}`}
                         className="rounded-md p-1 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50"
                         aria-label="Edit expense"
                       >
                         ✎
-                      </Link>
+                      </Link> */}
 
                       {/* Delete button */}
                       <form

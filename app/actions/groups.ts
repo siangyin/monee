@@ -79,7 +79,8 @@ export async function createGroup(locale: string, formData: FormData) {
   redirect(`/${locale}/groups`)
 }
 
-// Create a new group expense (minimal, equal-split later)
+// Create a new group expense with split modes (EQUAL / PERCENT)
+// MANUAL will come later.
 export async function createGroupExpenseEqualSplit(
   locale: string,
   groupId: string,
@@ -115,11 +116,24 @@ export async function createGroupExpenseEqualSplit(
 
   const group = membership.group
 
+  // 🔹 Load all members of this group for splitting
+  const members = await prisma.groupMember.findMany({
+    where: { groupId },
+    include: {
+      user: true,
+    },
+  })
+
+  if (members.length === 0) {
+    throw new Error("Group has no members; cannot split expense")
+  }
+
   const titleRaw = formData.get("title")
   const amountRaw = formData.get("amount")
   const dateRaw = formData.get("date")
   const noteRaw = formData.get("note")
   const categoryIdRaw = formData.get("categoryId")
+  const splitModeRaw = formData.get("splitMode")
 
   const title = typeof titleRaw === "string" ? titleRaw.trim() : ""
   const amountNumber = typeof amountRaw === "string" ? Number(amountRaw) : NaN
@@ -132,6 +146,15 @@ export async function createGroupExpenseEqualSplit(
     typeof categoryIdRaw === "string" && categoryIdRaw.length > 0
       ? categoryIdRaw
       : null
+
+  // 🔹 Normalise split mode – fallback to EQUAL if anything weird
+  let splitMode: "EQUAL" | "PERCENT" | "MANUAL" = "EQUAL"
+  if (typeof splitModeRaw === "string") {
+    const upper = splitModeRaw.toUpperCase()
+    if (upper === "EQUAL" || upper === "PERCENT" || upper === "MANUAL") {
+      splitMode = upper
+    }
+  }
 
   if (!title || Number.isNaN(amountNumber) || amountNumber <= 0) {
     // In v1, if bad input just go back; later we can show form errors
@@ -158,7 +181,7 @@ export async function createGroupExpenseEqualSplit(
     categoryName = cat?.name ?? null
   }
 
-  // Create the expense itself
+  // 🔹 Create the expense first, storing splitMode
   const expense = await prisma.expense.create({
     data: {
       title,
@@ -172,50 +195,111 @@ export async function createGroupExpenseEqualSplit(
       groupId, // link to group
       categoryId,
       categoryNameSnapshot: categoryName,
-      splitMode: "EQUAL", // 🔹 for now we always treat as equal split
+      splitMode, // stored even if we later fall back to equal
     },
   })
 
-  // --- Create equal shares for all members of the group ---
+  // 🔹 Build shares array depending on splitMode
+  type ShareItem = { userId: string; amount: number }
+  let shares: ShareItem[] = []
 
-  // Load all members of this group
-  const members = await prisma.groupMember.findMany({
-    where: { groupId },
-  })
+  if (splitMode === "PERCENT") {
+    // Read percents per member: fields like percent_<userId>
+    const percents = members.map((m) => {
+      const fieldName = `percent_${m.userId}`
+      const raw = formData.get(fieldName)
+      let value = 0
 
-  if (members.length > 0) {
-    const count = members.length
+      if (typeof raw === "string" && raw.trim() !== "") {
+        const parsed = Number(raw)
+        if (Number.isFinite(parsed) && parsed >= 0) {
+          value = parsed
+        }
+      }
 
-    // We work in cents to handle rounding nicely
-    const totalCents = Math.round(amountInBaseNumber * 100)
-    const baseShareCents = Math.floor(totalCents / count)
-    const remainder = totalCents - baseShareCents * count
+      return { userId: m.userId, percent: value }
+    })
 
-    let i = 0
-    await prisma.$transaction(
-      members.map((m) => {
-        // Distribute the remainder +1 cent to the first "remainder" members
-        const extra = i < remainder ? 1 : 0
-        const shareCents = baseShareCents + extra
-        i++
-
-        const shareAmount = shareCents / 100
-
-        return prisma.expenseShare.create({
-          data: {
-            expenseId: expense.id,
-            userId: m.userId,
-            amount: new Prisma.Decimal(shareAmount),
-          },
-        })
-      })
+    const totalPercent = percents.reduce(
+      (sum, p) => sum + p.percent,
+      0
     )
+
+    if (totalPercent > 0.0001) {
+      // Normalise: user doesn't have to hit exactly 100
+      shares = percents.map((p) => {
+        const fraction = p.percent / totalPercent
+        const rawShare = amountInBaseNumber * fraction
+        const amount = Number(rawShare.toFixed(2))
+        return { userId: p.userId, amount }
+      })
+    }
+  } else if (splitMode === "MANUAL") {
+    // Read manual amounts per member: fields like manual_<userId>
+    const manualItems = members.map((m) => {
+      const fieldName = `manual_${m.userId}`
+      const raw = formData.get(fieldName)
+      let value = 0
+
+      if (typeof raw === "string" && raw.trim() !== "") {
+        const parsed = Number(raw)
+        if (Number.isFinite(parsed) && parsed >= 0) {
+          value = parsed
+        }
+      }
+
+      return { userId: m.userId, value }
+    })
+
+    const totalManual = manualItems.reduce(
+      (sum, m) => sum + m.value,
+      0
+    )
+
+    // Allow a bit of tolerance when comparing manual total vs expense total
+    const tolerance = Math.max(0.05, Math.abs(amountInBaseNumber) * 0.01)
+
+    if (
+      totalManual > 0 &&
+      Math.abs(totalManual - amountInBaseNumber) <= tolerance
+    ) {
+      // Use the manual values directly (rounded to 2dp)
+      shares = manualItems.map((m) => ({
+        userId: m.userId,
+        amount: Number(m.value.toFixed(2)),
+      }))
+    }
+    // If totalManual is 0 or very different from amountInBaseNumber,
+    // we'll fall back to equal split below.
   }
+
+  // 🔸 Fallback to equal split if we didn't create any shares
+  if (shares.length === 0) {
+    const memberCount = members.length
+    const rawShare = amountInBaseNumber / memberCount
+    const sharePerMember = Number(rawShare.toFixed(2))
+
+    shares = members.map((m) => ({
+      userId: m.userId,
+      amount: sharePerMember,
+    }))
+  }
+
+  // 🔹 Persist shares
+  await prisma.expenseShare.createMany({
+    data: shares.map((s) => ({
+      expenseId: expense.id,
+      userId: s.userId,
+      amount: new Prisma.Decimal(s.amount),
+    })),
+  })
 
   redirect(`/${locale}/groups/${groupId}`)
 }
 
-// Delete a group expense
+
+
+// Delete a group expense (and its shares & photos)
 export async function deleteGroupExpense(
   locale: string,
   groupId: string,
@@ -255,7 +339,19 @@ export async function deleteGroupExpense(
     redirect(`/${locale}/groups/${groupId}`)
   }
 
-  // Use deleteMany so we can also enforce groupId in the where
+  // Optionally, only allow ADMIN or payer to delete:
+  // if (membership.role !== "ADMIN") { ... }
+
+  // Clean up shares and photos first
+  await prisma.expenseShare.deleteMany({
+    where: { expenseId },
+  })
+
+  await prisma.photoRef.deleteMany({
+    where: { expenseId },
+  })
+
+  // Then delete the expense itself, scoped to this group for safety
   await prisma.expense.deleteMany({
     where: {
       id: expenseId,
@@ -265,6 +361,7 @@ export async function deleteGroupExpense(
 
   redirect(`/${locale}/groups/${groupId}`)
 }
+
 
 // Update group name (only ADMINs)
 export async function updateGroupName(

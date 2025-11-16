@@ -67,7 +67,8 @@ export default async function EditExpensePage({
     date: expense.date.toISOString().slice(0, 10),
     note: expense.note,
     categoryId: expense.categoryId,
-    photoUrl: expense?.photoRef[0]?.url ?? undefined,
+    photoUrl:
+      expense?.photoRef.length > 0 ? expense?.photoRef[0]?.url : undefined,
   }
 
   return (
