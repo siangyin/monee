@@ -41,7 +41,7 @@ export default function DeleteExpenseButton({
       type="button"
       onClick={onClick}
       disabled={pending}
-      className="p-1 text-red-600 hover:bg-red-50 rounded-md disabled:opacity-50"
+      className="p-1 text-zinc-400 hover:text-black rounded-md disabled:opacity-50"
       aria-label="Delete"
     >
       <Trash2 size={16} />

@@ -12,6 +12,18 @@ generator client {
 // npm run prisma:migrate -- --name init
 // npm run prisma:generate
 
+enum MemberRole {
+  ADMIN
+  MEMBER
+}
+
+enum SplitMode {
+  EQUAL
+  PERCENT
+  MANUAL
+}
+
+
 /* ---------- Existing auth/group models ---------- */
 model User {
   id            String        @id @default(cuid())
@@ -26,6 +38,7 @@ model User {
   memberships   GroupMember[]
   expenses      Expense[]     // personal expenses authored by this user
   category      Category[]
+  shares         ExpenseShare[]
 }
 
 model Group {
@@ -53,10 +66,7 @@ model GroupMember {
   @@unique([groupId, userId])
 }
 
-enum MemberRole {
-  ADMIN
-  MEMBER
-}
+
 
 /* ---------- Phase 1: Personal spending + receipts ---------- */
 
@@ -101,11 +111,28 @@ model Expense {
   group          Group?    @relation(fields: [groupId], references: [id])
   category       Category? @relation(fields: [categoryId], references: [id])
   photoRef       PhotoRef[]
+  splitMode      SplitMode @default(EQUAL)
+  shares         ExpenseShare[]
 
   @@index([userId, date])
   @@index([groupId, date])
   @@index([categoryId])
 }
+
+model ExpenseShare {
+  id        String   @id @default(cuid())
+  expenseId String
+  userId    String
+  amount    Decimal  @db.Decimal(14, 2) // share amount in group/base currency
+  createdAt DateTime @default(now())
+
+  expense   Expense  @relation(fields: [expenseId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([expenseId])
+  @@index([userId])
+}
+
 
 model PhotoRef {
   id         String   @id @default(cuid())

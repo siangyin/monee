@@ -27,7 +27,7 @@ export const createExpenseSchema = z.object({
     .string()
     .trim()
     .optional()
-    .transform((val) => (val && val.length > 0 ? val : null)),
+    .transform((val) => (val && val.length > 0 ? val : "")),
 })
 
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>

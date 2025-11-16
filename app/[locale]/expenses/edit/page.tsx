@@ -11,10 +11,10 @@ export default async function EditExpensePage({
   searchParams,
 }: {
   params: Promise<{ locale: Locale }>
-  searchParams: Promise<{ id?: string }>
+  searchParams: Promise<{ id?: string; groupId?: string }>
 }) {
   const { locale } = await params
-  const { id } = await searchParams
+  const { id, groupId } = await searchParams
 
   if (!id) {
     notFound()
@@ -36,7 +36,7 @@ export default async function EditExpensePage({
   }
 
   const expense = await prisma.expense.findUnique({
-    where: { id, userId: user.id },
+    where: { id, groupId },
     include: {
       photoRef: true,
     },
@@ -67,7 +67,7 @@ export default async function EditExpensePage({
     date: expense.date.toISOString().slice(0, 10),
     note: expense.note,
     categoryId: expense.categoryId,
-    photoUrl: expense.photoRef[0]?.url ?? null,
+    photoUrl: expense?.photoRef[0]?.url ?? undefined,
   }
 
   return (

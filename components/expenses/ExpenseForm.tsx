@@ -75,7 +75,11 @@ export default function ExpenseForm({
 
   const amount = form.watch("amount")
   const fxToBase = form.watch("fxToBase")
-  const photoUrl = form.watch("photoUrl")
+  const rawPhoto = form.watch("photoUrl")
+  const photoUrl =
+    typeof rawPhoto === "string" && rawPhoto.trim().length > 0
+      ? rawPhoto.trim()
+      : ""
 
   const normalized =
     amount && fxToBase ? Number((amount * fxToBase).toFixed(2)) : 0

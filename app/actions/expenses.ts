@@ -56,7 +56,7 @@ export async function createExpense(locale: string, input: CreateExpenseInput) {
   })
 
   // NEW: create PhotoRef if photoUrl provided
-  if (data.photoUrl) {
+  if (data.photoUrl && data.photoUrl?.length > 0) {
     await prisma.photoRef.create({
       data: {
         expenseId: created.id,

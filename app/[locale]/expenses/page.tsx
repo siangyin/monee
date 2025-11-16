@@ -27,7 +27,6 @@ export default async function ExpensesPage({
   // Build WHERE filter object
   const where: any = {
     userId: user.id,
-    groupId: null, // personal only
   }
 
   const now = new Date()
@@ -81,6 +80,7 @@ export default async function ExpensesPage({
       include: {
         category: true,
         photoRef: true,
+        group: true,
       },
     }),
   ])

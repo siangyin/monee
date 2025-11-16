@@ -42,9 +42,8 @@ export async function getAuthUserWithCategories() {
       data: {
         clerkId: userId,
         email,
-        name: clerkUser?.fullName ?? null,
+        name: clerkUser?.username ?? clerkUser?.fullName ?? null,
         imageUrl: clerkUser?.imageUrl ?? null,
-
       },
     })
   }
