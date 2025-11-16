@@ -11,10 +11,10 @@ export default async function EditExpensePage({
   searchParams,
 }: {
   params: Promise<{ locale: Locale }>
-  searchParams: Promise<{ id?: string; groupId?: string }>
+  searchParams: Promise<{ id?: string }>
 }) {
   const { locale } = await params
-  const { id, groupId } = await searchParams
+  const { id } = await searchParams
 
   if (!id) {
     notFound()
@@ -22,8 +22,6 @@ export default async function EditExpensePage({
 
   const { userId } = await auth()
   if (!userId) {
-    // not signed in → let our auth flow handle it by redirecting
-    // (you could also redirect("/sign-in") here if you like)
     notFound()
   }
 
@@ -36,7 +34,7 @@ export default async function EditExpensePage({
   }
 
   const expense = await prisma.expense.findUnique({
-    where: { id, groupId },
+    where: { id, userId: user.id },
     include: {
       photoRef: true,
     },
@@ -67,9 +65,11 @@ export default async function EditExpensePage({
     date: expense.date.toISOString().slice(0, 10),
     note: expense.note,
     categoryId: expense.categoryId,
-    photoUrl:
-      expense?.photoRef.length > 0 ? expense?.photoRef[0]?.url : undefined,
+    photoUrl: expense.photoRef[0]?.url ?? null,
   }
+
+  // TODO: once we store user’s saved rates, load them here
+  const savedRatesByCurrency: Record<string, number> = {}
 
   return (
     <main className="space-y-4">
@@ -79,6 +79,8 @@ export default async function EditExpensePage({
         mode="edit"
         initialData={initialData}
         categories={categories}
+        baseCurrency={user.baseCurrency}
+        savedRatesByCurrency={savedRatesByCurrency}
       />
     </main>
   )

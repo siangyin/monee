@@ -1,37 +1,33 @@
 // components/expenses/ExpenseForm.tsx
 "use client"
-import Image from "next/image"
-import { useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { toast } from "sonner"
 
-import {
-  createExpenseSchema,
-  type CreateExpenseInput,
-  expenseCurrencies,
-} from "@/lib/validation/expense"
+import { useEffect, useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import type { Locale } from "@/i18n"
+import { expenseCurrencies } from "@/lib/validation/expense"
 import { createExpense, updateExpense } from "@/app/actions/expenses"
 
-type Mode = "create" | "edit"
-
-type ExpenseInitial = {
-  id: string
-  title: string
-  amount: number
-  currency: (typeof expenseCurrencies)[number]
-  fxToBase: number
-  date: string // yyyy-mm-dd
-  note?: string | null
-  categoryId?: string | null
-  photoUrl?: string | null
-}
-
-type CategoryOption = {
-  id: string
-  name: string
-  color?: string | null
+type ExpenseFormProps = {
+  locale: Locale
+  mode: "create" | "edit"
+  initialData?: {
+    id: string
+    title: string
+    amount: number
+    currency: (typeof expenseCurrencies)[number]
+    fxToBase: number
+    date: string // "YYYY-MM-DD"
+    note: string | null
+    categoryId: string | null
+    photoUrl: string | null
+  }
+  categories: {
+    id: string
+    name: string
+    color: string | null
+  }[]
+  baseCurrency: string
+  savedRatesByCurrency?: Record<string, number>
 }
 
 export default function ExpenseForm({
@@ -39,203 +35,285 @@ export default function ExpenseForm({
   mode,
   initialData,
   categories,
-}: {
-  locale: string
-  mode: Mode
-  initialData?: ExpenseInitial
-  categories: CategoryOption[]
-}) {
+  baseCurrency,
+  savedRatesByCurrency = {},
+}: ExpenseFormProps) {
   const router = useRouter()
-  const [pending, startTransition] = useTransition()
+  const [isPending, startTransition] = useTransition()
 
-  const form = useForm<CreateExpenseInput>({
-    resolver: zodResolver(createExpenseSchema),
-    defaultValues: initialData
-      ? {
-          title: initialData.title,
-          amount: initialData.amount,
-          currency: initialData.currency,
-          fxToBase: initialData.fxToBase,
-          date: initialData.date,
-          categoryId: initialData.categoryId ?? null,
-          note: initialData.note ?? "",
-          photoUrl: initialData.photoUrl ?? undefined,
-        }
-      : {
-          title: "",
-          amount: 0,
-          currency: "SGD",
-          fxToBase: 1,
-          date: new Date().toISOString().slice(0, 10),
-          categoryId: null,
-          note: "",
-          photoUrl: undefined,
-        },
-  })
+  // --- Form state ---
 
-  const amount = form.watch("amount")
-  const fxToBase = form.watch("fxToBase")
-  const rawPhoto = form.watch("photoUrl")
-  const photoUrl =
-    typeof rawPhoto === "string" && rawPhoto.trim().length > 0
-      ? rawPhoto.trim()
-      : ""
+  const [title, setTitle] = useState(initialData?.title ?? "")
+  const [amountText, setAmountText] = useState(
+    initialData ? String(initialData.amount) : ""
+  )
+  const [currency, setCurrency] = useState<(typeof expenseCurrencies)[number]>(
+    initialData?.currency ?? baseCurrency
+  )
+  const [fxToBase, setFxToBase] = useState<number>(
+    initialData?.fxToBase ?? (currency === baseCurrency ? 1 : 0)
+  )
+  const [date, setDate] = useState(
+    initialData?.date ?? new Date().toISOString().slice(0, 10)
+  )
+  const [note, setNote] = useState(initialData?.note ?? "")
+  const [categoryId, setCategoryId] = useState<string>(
+    initialData?.categoryId ?? ""
+  )
+  const [photoUrl, setPhotoUrl] = useState<string>(initialData?.photoUrl ?? "")
 
-  const normalized =
-    amount && fxToBase ? Number((amount * fxToBase).toFixed(2)) : 0
+  const [error, setError] = useState<string | null>(null)
 
-  function onSubmit(values: CreateExpenseInput) {
+  // --- Auto-fill fxToBase from saved rates when currency changes ---
+
+  useEffect(() => {
+    // If same as base, rate is always 1.0
+    if (currency === baseCurrency) {
+      setFxToBase(1)
+      return
+    }
+
+    // Use saved rate if we have one
+    const saved = savedRatesByCurrency[currency]
+    if (saved && saved > 0) {
+      setFxToBase(saved)
+      return
+    }
+
+    // Otherwise keep whatever user has typed (no-op)
+  }, [currency, baseCurrency, savedRatesByCurrency])
+
+  // --- Derived: approximate base amount ---
+
+  const numericAmount = Number(amountText)
+  const hasValidAmount =
+    !Number.isNaN(numericAmount) && numericAmount > 0 && fxToBase > 0
+
+  const approxBase = hasValidAmount
+    ? Number((numericAmount * fxToBase).toFixed(2))
+    : null
+
+  // --- Submit handler ---
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setError(null)
+
+    const parsedAmount = Number(amountText)
+
+    if (!title.trim()) {
+      setError("Please enter a title.")
+      return
+    }
+
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      setError("Please enter a valid amount.")
+      return
+    }
+
+    if (Number.isNaN(fxToBase) || fxToBase <= 0) {
+      setError("Please enter a valid rate to base currency.")
+      return
+    }
+
+    const payload = {
+      title: title.trim(),
+      amount: parsedAmount,
+      currency,
+      fxToBase,
+      date,
+      note: note.trim() === "" ? null : note.trim(),
+      categoryId: categoryId || null,
+      photoUrl: photoUrl.trim() === "" ? null : photoUrl.trim(),
+    }
+
     startTransition(async () => {
       try {
         if (mode === "create") {
-          await createExpense(locale, values)
-          toast.success("Expense created")
+          await createExpense(locale, payload)
+        } else if (mode === "edit" && initialData?.id) {
+          await updateExpense(locale, initialData.id, payload)
         } else {
-          if (!initialData) {
-            toast.error("Missing expense id")
-            return
-          }
-          await updateExpense(locale, initialData.id, values)
-          toast.success("Expense updated")
+          throw new Error("Missing expense id for edit mode.")
         }
 
         router.push(`/${locale}/expenses`)
+        router.refresh()
       } catch (err) {
         console.error(err)
-        toast.error("Failed to save expense")
+        setError("Something went wrong while saving. Please try again.")
       }
     })
   }
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-w-md">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 rounded-md border bg-white p-4 text-sm"
+    >
+      {/* Title */}
       <div className="space-y-1">
-        <label className="text-sm font-medium">Title</label>
+        <label className="block text-xs text-gray-600">Title</label>
         <input
           type="text"
-          {...form.register("title")}
+          name="title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="e.g. Coffee, Groceries, Grab ride"
           className="w-full rounded-md border px-3 py-2 text-sm"
-          placeholder="Coffee at Starbucks"
+          required
         />
-        {form.formState.errors.title && (
-          <p className="text-xs text-red-600">
-            {form.formState.errors.title.message}
-          </p>
-        )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Amount</label>
+      {/* Amount + Currency */}
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="flex-1 space-y-1">
+          <label className="block text-xs text-gray-600">
+            Amount ({currency})
+          </label>
           <input
             type="number"
+            name="amount"
+            min="0"
             step="0.01"
-            {...form.register("amount", { valueAsNumber: true })}
+            value={amountText}
+            onChange={(e) => setAmountText(e.target.value)}
+            placeholder="0.00"
             className="w-full rounded-md border px-3 py-2 text-sm"
+            required
           />
-          {form.formState.errors.amount && (
-            <p className="text-xs text-red-600">
-              {form.formState.errors.amount.message}
-            </p>
-          )}
         </div>
 
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Currency</label>
+        <div className="w-full sm:w-40 space-y-1">
+          <label className="block text-xs text-gray-600">Currency</label>
           <select
-            {...form.register("currency")}
+            name="currency"
+            value={currency}
+            onChange={(e) =>
+              setCurrency(e.target.value as (typeof expenseCurrencies)[number])
+            }
             className="w-full rounded-md border px-3 py-2 text-sm"
           >
-            <option value="">Select</option>
             {expenseCurrencies.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
             ))}
           </select>
-          {form.formState.errors.currency && (
-            <p className="text-xs text-red-600">
-              {form.formState.errors.currency.message}
-            </p>
-          )}
         </div>
       </div>
 
+      {/* FX to base */}
       <div className="space-y-1">
-        <label className="text-sm font-medium">
-          Rate to base (your main currency)
+        <label className="block text-xs text-gray-600">
+          Rate to base ({baseCurrency})
         </label>
         <input
           type="number"
+          name="fxToBase"
+          min="0"
           step="0.0001"
-          {...form.register("fxToBase", { valueAsNumber: true })}
+          value={Number.isNaN(fxToBase) ? "" : fxToBase}
+          onChange={(e) => {
+            const v = Number(e.target.value)
+            if (e.target.value === "") {
+              setFxToBase(0)
+            } else if (Number.isFinite(v) && v >= 0) {
+              setFxToBase(v)
+            }
+          }}
           className="w-full rounded-md border px-3 py-2 text-sm"
         />
-        {form.formState.errors.fxToBase && (
-          <p className="text-xs text-red-600">
-            {form.formState.errors.fxToBase.message}
-          </p>
-        )}
-        {normalized > 0 && (
-          <p className="text-xs text-gray-600 mt-1">
-            ≈ {normalized.toFixed(2)} (base currency)
+
+        <p className="text-[11px] text-gray-500">
+          {currency === baseCurrency ? (
+            <>Same as base currency, using 1.0000.</>
+          ) : savedRatesByCurrency[currency] ? (
+            <>
+              Using saved rate:&nbsp;
+              <span className="font-medium">
+                1 {currency} ≈ {savedRatesByCurrency[currency].toFixed(4)}{" "}
+                {baseCurrency}
+              </span>
+            </>
+          ) : (
+            <>
+              No saved rate for {currency} → {baseCurrency}. Enter one manually.
+            </>
+          )}
+        </p>
+
+        {hasValidAmount && approxBase !== null && (
+          <p className="text-[11px] text-emerald-700 mt-1">
+            ≈ <span className="font-semibold">{approxBase.toFixed(2)}</span>{" "}
+            {baseCurrency}
           </p>
         )}
       </div>
 
+      {/* Date + Category */}
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="space-y-1">
+          <label className="block text-xs text-gray-600">Date</label>
+          <input
+            type="date"
+            name="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="rounded-md border px-3 py-2 text-sm"
+          />
+        </div>
+
+        <div className="flex-1 space-y-1">
+          <label className="block text-xs text-gray-600">Category</label>
+          <select
+            name="categoryId"
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="w-full rounded-md border px-3 py-2 text-sm"
+          >
+            <option value="">Uncategorized</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Note */}
       <div className="space-y-1">
-        <label className="text-sm font-medium">Date</label>
-        <input
-          type="date"
-          {...form.register("date")}
+        <label className="block text-xs text-gray-600">Note (optional)</label>
+        <textarea
+          name="note"
+          rows={2}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Add a short note, e.g. who joined, special remark..."
           className="w-full rounded-md border px-3 py-2 text-sm"
         />
-        {form.formState.errors.date && (
-          <p className="text-xs text-red-600">
-            {form.formState.errors.date.message}
-          </p>
-        )}
       </div>
 
+      {/* Photo URL */}
       <div className="space-y-1">
-        <label className="text-sm font-medium">Category</label>
-        <select
-          {...form.register("categoryId")}
-          className="w-full rounded-md border px-3 py-2 text-sm"
-        >
-          <option value="">No category</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        {form.formState.errors.categoryId && (
-          <p className="text-xs text-red-600">
-            {form.formState.errors.categoryId.message}
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Photo URL (optional)</label>
+        <label className="block text-xs text-gray-600">
+          Photo URL (optional)
+        </label>
         <input
           type="url"
-          {...form.register("photoUrl")}
+          name="photoUrl"
+          value={photoUrl}
+          onChange={(e) => setPhotoUrl(e.target.value)}
+          placeholder="Paste an image URL for quick visual reference"
           className="w-full rounded-md border px-3 py-2 text-sm"
-          placeholder="https://example.com/receipt.jpg"
         />
-        {form.formState.errors.photoUrl && (
-          <p className="text-xs text-red-600">
-            {form.formState.errors.photoUrl.message}
-          </p>
-        )}
 
-        {/* Live preview */}
-        {photoUrl && (
+        {photoUrl.trim() !== "" && (
           <div className="mt-2">
             <div className="text-xs text-gray-500 mb-1">Preview:</div>
-
+            {/* Use <img> to avoid next/image domain config issues */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={photoUrl}
               alt="Expense photo preview"
@@ -245,31 +323,26 @@ export default function ExpenseForm({
         )}
       </div>
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Note (optional)</label>
-        <textarea
-          rows={3}
-          {...form.register("note")}
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          placeholder="Who, where, why..."
-        />
-        {form.formState.errors.note && (
-          <p className="text-xs text-red-600">
-            {form.formState.errors.note.message}
-          </p>
-        )}
-      </div>
+      {/* Error */}
+      {error && (
+        <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2">
+          {error}
+        </p>
+      )}
 
-      <div className="flex gap-2">
+      {/* Actions */}
+      <div className="flex items-center justify-end gap-2 pt-2">
         <button
           type="submit"
-          disabled={pending}
-          className="inline-flex items-center rounded-md bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          disabled={isPending}
+          className="inline-flex items-center justify-center rounded-md bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
         >
-          {pending
-            ? "Saving..."
+          {isPending
+            ? mode === "create"
+              ? "Creating..."
+              : "Saving..."
             : mode === "create"
-            ? "Save expense"
+            ? "Create expense"
             : "Save changes"}
         </button>
       </div>
