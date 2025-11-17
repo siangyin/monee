@@ -3,7 +3,6 @@ import { notFound } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { type Locale } from "@/i18n"
 import ExpenseForm from "@/components/expenses/ExpenseForm"
-import { expenseCurrencies } from "@/lib/validation/expense"
 import { auth } from "@clerk/nextjs/server"
 
 export default async function EditExpensePage({
@@ -56,11 +55,7 @@ export default async function EditExpensePage({
     id: expense.id,
     title: expense.title,
     amount: Number(expense.amount),
-    currency: (expenseCurrencies.includes(
-      expense.currency as (typeof expenseCurrencies)[number]
-    )
-      ? expense.currency
-      : "SGD") as (typeof expenseCurrencies)[number],
+    currency: expense.currency,
     fxToBase: Number(expense.fxToBase),
     date: expense.date.toISOString().slice(0, 10),
     note: expense.note,

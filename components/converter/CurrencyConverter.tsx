@@ -28,8 +28,7 @@ export default function CurrencyConverter({
 
   // 🔹 Decide initial spending currency & initial rate from savedRates
   const initialSpendingCurrency =
-    savedRates.find((r) => r.base === baseCurrency)?.quote ??
-    (expenseCurrencies.includes("JPY" as any) ? "JPY" : baseCurrency)
+    savedRates.find((r) => r.base === baseCurrency)?.quote ?? baseCurrency
 
   const initialRate =
     savedRates

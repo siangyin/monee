@@ -14,7 +14,7 @@ type ExpenseFormProps = {
     id: string
     title: string
     amount: number
-    currency: (typeof expenseCurrencies)[number]
+    currency: string
     fxToBase: number
     date: string // "YYYY-MM-DD"
     note: string | null
@@ -47,7 +47,7 @@ export default function ExpenseForm({
   const [amountText, setAmountText] = useState(
     initialData ? String(initialData.amount) : ""
   )
-  const [currency, setCurrency] = useState<(typeof expenseCurrencies)[number]>(
+  const [currency, setCurrency] = useState<string>(
     initialData?.currency ?? baseCurrency
   )
   const [fxToBase, setFxToBase] = useState<number>(
@@ -189,9 +189,7 @@ export default function ExpenseForm({
           <select
             name="currency"
             value={currency}
-            onChange={(e) =>
-              setCurrency(e.target.value as (typeof expenseCurrencies)[number])
-            }
+            onChange={(e) => setCurrency(e.target.value)}
             className="w-full rounded-md border px-3 py-2 text-sm"
           >
             {expenseCurrencies.map((c) => (
