@@ -79,8 +79,8 @@ export async function createGroup(locale: string, formData: FormData) {
   redirect(`/${locale}/groups`)
 }
 
-// Create a new group expense with split modes (EQUAL / PERCENT)
-// MANUAL will come later.
+// Create a new group expense with split modes (EQUAL / PERCENT / MANUAL)
+// and multi-currency support.
 export async function createGroupExpenseEqualSplit(
   locale: string,
   groupId: string,
@@ -119,9 +119,7 @@ export async function createGroupExpenseEqualSplit(
   // 🔹 Load all members of this group for splitting
   const members = await prisma.groupMember.findMany({
     where: { groupId },
-    include: {
-      user: true,
-    },
+    include: { user: true },
   })
 
   if (members.length === 0) {
@@ -134,6 +132,10 @@ export async function createGroupExpenseEqualSplit(
   const noteRaw = formData.get("note")
   const categoryIdRaw = formData.get("categoryId")
   const splitModeRaw = formData.get("splitMode")
+
+  // NEW: multi-currency fields
+  const currencyRaw = formData.get("currency")
+  const fxRaw = formData.get("fxToBase")
 
   const title = typeof titleRaw === "string" ? titleRaw.trim() : ""
   const amountNumber = typeof amountRaw === "string" ? Number(amountRaw) : NaN
@@ -157,14 +159,31 @@ export async function createGroupExpenseEqualSplit(
   }
 
   if (!title || Number.isNaN(amountNumber) || amountNumber <= 0) {
-    // In v1, if bad input just go back; later we can show form errors
     redirect(`/${locale}/groups/${groupId}`)
   }
 
-  // For now, we assume the group currency is the "base" for this group.
-  const currency = group.defaultCurr
-  const fxToBase = 1
-  const amountInBaseNumber = amountNumber // same as amount for now
+  // 🔹 Currency & FX handling
+  let currency =
+    typeof currencyRaw === "string" && currencyRaw.trim()
+      ? currencyRaw.trim().toUpperCase()
+      : group.defaultCurr
+
+  let fxToBaseNumber: number
+
+  if (typeof fxRaw === "string" && fxRaw.trim() !== "") {
+    const parsed = Number(fxRaw)
+    fxToBaseNumber =
+      Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+  } else {
+    // If same as group default currency, rate is 1
+    fxToBaseNumber = currency === group.defaultCurr ? 1 : 1
+    // Later we can be stricter, but for now we just default to 1
+  }
+
+  // Base amount in group currency
+  const amountInBaseNumber = Number(
+    (amountNumber * fxToBaseNumber).toFixed(2)
+  )
 
   const date =
     typeof dateRaw === "string" && dateRaw
@@ -181,21 +200,21 @@ export async function createGroupExpenseEqualSplit(
     categoryName = cat?.name ?? null
   }
 
-  // 🔹 Create the expense first, storing splitMode
+  // 🔹 Create the expense first, storing splitMode + currency + fx
   const expense = await prisma.expense.create({
     data: {
       title,
       amount: new Prisma.Decimal(amountNumber),
       currency,
-      fxToBase: new Prisma.Decimal(fxToBase),
+      fxToBase: new Prisma.Decimal(fxToBaseNumber),
       amountInBase: new Prisma.Decimal(amountInBaseNumber),
       date,
       note,
-      userId: user.id, // payer is current user
-      groupId, // link to group
+      userId: user.id, // payer
+      groupId,
       categoryId,
       categoryNameSnapshot: categoryName,
-      splitMode, // stored even if we later fall back to equal
+      splitMode,
     },
   })
 
@@ -204,7 +223,6 @@ export async function createGroupExpenseEqualSplit(
   let shares: ShareItem[] = []
 
   if (splitMode === "PERCENT") {
-    // Read percents per member: fields like percent_<userId>
     const percents = members.map((m) => {
       const fieldName = `percent_${m.userId}`
       const raw = formData.get(fieldName)
@@ -226,7 +244,6 @@ export async function createGroupExpenseEqualSplit(
     )
 
     if (totalPercent > 0.0001) {
-      // Normalise: user doesn't have to hit exactly 100
       shares = percents.map((p) => {
         const fraction = p.percent / totalPercent
         const rawShare = amountInBaseNumber * fraction
@@ -235,7 +252,6 @@ export async function createGroupExpenseEqualSplit(
       })
     }
   } else if (splitMode === "MANUAL") {
-    // Read manual amounts per member: fields like manual_<userId>
     const manualItems = members.map((m) => {
       const fieldName = `manual_${m.userId}`
       const raw = formData.get(fieldName)
@@ -256,21 +272,20 @@ export async function createGroupExpenseEqualSplit(
       0
     )
 
-    // Allow a bit of tolerance when comparing manual total vs expense total
-    const tolerance = Math.max(0.05, Math.abs(amountInBaseNumber) * 0.01)
+    const tolerance = Math.max(
+      0.05,
+      Math.abs(amountInBaseNumber) * 0.01
+    )
 
     if (
       totalManual > 0 &&
       Math.abs(totalManual - amountInBaseNumber) <= tolerance
     ) {
-      // Use the manual values directly (rounded to 2dp)
       shares = manualItems.map((m) => ({
         userId: m.userId,
         amount: Number(m.value.toFixed(2)),
       }))
     }
-    // If totalManual is 0 or very different from amountInBaseNumber,
-    // we'll fall back to equal split below.
   }
 
   // 🔸 Fallback to equal split if we didn't create any shares
@@ -296,8 +311,6 @@ export async function createGroupExpenseEqualSplit(
 
   redirect(`/${locale}/groups/${groupId}`)
 }
-
-
 
 // Delete a group expense (and its shares & photos)
 export async function deleteGroupExpense(
@@ -361,7 +374,6 @@ export async function deleteGroupExpense(
 
   redirect(`/${locale}/groups/${groupId}`)
 }
-
 
 // Update group name (only ADMINs)
 export async function updateGroupName(

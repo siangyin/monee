@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useParams, usePathname } from "next/navigation"
 import { Wallet2, Users, Home, Settings, Calculator } from "lucide-react"
-import LocaleSwitcher from "@/components/LocaleSwitcher"
+// import LocaleSwitcher from "@/components/LocaleSwitcher"
 import { SignedIn, SignedOut, UserButton, SignInButton } from "@clerk/nextjs"
 
 export default function TopNav() {
@@ -93,7 +93,7 @@ export default function TopNav() {
               />
             </SignedIn>
 
-            <LocaleSwitcher />
+            {/* <LocaleSwitcher /> */}
           </div>
         </div>
       </div>

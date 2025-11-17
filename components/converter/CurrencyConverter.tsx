@@ -46,8 +46,6 @@ export default function CurrencyConverter({
 
   const quote = spendingCurrency
 
-  const exampleText = `Example: If you are spending in ${quote} and your base is ${base}, enter how much 1 ${quote} equals in ${base}.`
-
   // 🔹 Auto-update rate when user changes spending currency
   useEffect(() => {
     const match = savedRates.find(
@@ -79,10 +77,20 @@ export default function CurrencyConverter({
       <section className="rounded-md border bg-white p-4 space-y-4 text-sm">
         <div>
           <h2 className="text-sm font-medium">Convert spending</h2>
-          <p className="text-xs text-gray-500 mt-1">
-            Your base currency:{" "}
-            <span className="font-semibold">{baseCurrency}</span>. {exampleText}
-          </p>
+        </div>
+
+        {/* Live result */}
+        <div className="mt-3 rounded-md bg-gray-50 px-3 py-2 text-xs">
+          <div className="text-gray-600 mb-1">Result</div>
+          {result !== null ? (
+            <div className="text-sm font-semibold">
+              {amount || 0} {quote} ≈ {result.toFixed(2)} {base}
+            </div>
+          ) : (
+            <div className="text-[11px] text-gray-500">
+              Enter amount and a valid rate to see the converted value.
+            </div>
+          )}
         </div>
 
         <form onSubmit={(e) => e.preventDefault()} className="space-y-3">
@@ -135,24 +143,6 @@ export default function CurrencyConverter({
               placeholder={`e.g. 0.0098 (1 ${quote} = 0.0098 ${base})`}
               className="w-full rounded-md border px-3 py-2 text-sm"
             />
-            <p className="text-[11px] text-gray-500 mt-1">
-              This is the same as <code>fxToBase</code> in your expenses: amount
-              × rate = base currency.
-            </p>
-          </div>
-
-          {/* Live result */}
-          <div className="mt-3 rounded-md bg-gray-50 px-3 py-2 text-xs">
-            <div className="text-gray-600 mb-1">Result</div>
-            {result !== null ? (
-              <div className="text-sm font-semibold">
-                {amount || 0} {quote} ≈ {result.toFixed(2)} {base}
-              </div>
-            ) : (
-              <div className="text-[11px] text-gray-500">
-                Enter amount and a valid rate to see the converted value.
-              </div>
-            )}
           </div>
         </form>
 

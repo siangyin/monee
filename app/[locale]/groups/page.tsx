@@ -45,10 +45,6 @@ export default async function GroupsPage({ params }: PageProps) {
       {/* Create group form */}
       <section className="rounded-md border bg-white p-4 space-y-3">
         <h2 className="text-sm font-medium">Create a new group</h2>
-        <p className="text-xs text-gray-500">
-          Give your group a name like &ldquo;Japan Trip 2026&rdquo; or
-          &ldquo;Roommates @ Paya Lebar&rdquo;.
-        </p>
 
         <form
           action={handleCreateGroup}

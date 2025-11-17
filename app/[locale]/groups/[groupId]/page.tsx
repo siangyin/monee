@@ -10,6 +10,7 @@ import {
   addGroupMemberByEmail,
   deleteGroupExpense,
 } from "@/app/actions/groups"
+import { expenseCurrencies } from "@/lib/validation/expense"
 
 type PageProps = {
   params: Promise<{ locale: Locale; groupId: string }>
@@ -170,11 +171,6 @@ export default async function GroupDetailPage({ params }: PageProps) {
           {/* Add group expense form */}
           <div className="rounded-md border bg-white p-4 space-y-3">
             <h2 className="text-sm font-medium">Add group expense</h2>
-            <p className="text-xs text-gray-500">
-              For now this will treat the current user as the payer and assume
-              an equal split among all members. We&apos;ll add detailed split
-              options later.
-            </p>
 
             <form action={handleCreateExpense} className="space-y-3 text-sm">
               <div className="space-y-1">
@@ -188,21 +184,60 @@ export default async function GroupDetailPage({ params }: PageProps) {
                 />
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                {/* Amount + currency */}
                 <div className="flex-1 space-y-1">
                   <label className="block text-xs text-gray-600">
-                    Amount ({group.defaultCurr})
+                    Amount (spending currency)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      name="amount"
+                      min="0"
+                      step="0.01"
+                      required
+                      placeholder="0.00"
+                      className="w-full rounded-md border px-3 py-2 text-sm"
+                    />
+                    <select
+                      name="currency"
+                      defaultValue={group.defaultCurr}
+                      className="w-28 rounded-md border px-2 py-2 text-xs"
+                    >
+                      {expenseCurrencies.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    E.g. pay in JPY, but balances are kept in{" "}
+                    <span className="font-medium">{group.defaultCurr}</span>.
+                  </p>
+                </div>
+
+                {/* FX + date */}
+                <div className="space-y-1">
+                  <label className="block text-xs text-gray-600">
+                    FX to {group.defaultCurr}
                   </label>
                   <input
                     type="number"
-                    name="amount"
+                    name="fxToBase"
                     min="0"
-                    step="0.01"
-                    required
-                    placeholder="0.00"
+                    step="0.0001"
+                    placeholder="1.0000"
                     className="w-full rounded-md border px-3 py-2 text-sm"
                   />
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    1 spending currency =&nbsp;
+                    <span className="font-mono">X</span> {group.defaultCurr}.
+                    Leave empty if same currency.
+                  </p>
                 </div>
+
                 <div className="space-y-1">
                   <label className="block text-xs text-gray-600">Date</label>
                   <input
@@ -381,7 +416,16 @@ export default async function GroupDetailPage({ params }: PageProps) {
                     <div className="ml-3 flex items-center gap-2">
                       {/* Amount */}
                       <div className="text-right text-sm font-semibold">
-                        {e.amount.toString()} {e.currency}
+                        <div>
+                          {e.amount.toString()} {e.currency}
+                        </div>
+                        <div className="mt-0.5 text-[10px] text-gray-500">
+                          ≈{" "}
+                          {Number(
+                            (e.amountInBase ?? e.amount).toString()
+                          ).toFixed(2)}{" "}
+                          {group.defaultCurr}
+                        </div>
                       </div>
 
                       {/* Edit link */}
