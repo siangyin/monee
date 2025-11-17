@@ -2,8 +2,9 @@
 
 import Link from "next/link"
 import { useParams, usePathname } from "next/navigation"
-import { Wallet2, Users, User, Home } from "lucide-react"
+import { Wallet2, Users, Home, Settings, Calculator } from "lucide-react"
 import LocaleSwitcher from "@/components/LocaleSwitcher"
+import { SignedIn, SignedOut, UserButton, SignInButton } from "@clerk/nextjs"
 
 export default function TopNav() {
   const params = useParams() as { locale?: string }
@@ -13,8 +14,10 @@ export default function TopNav() {
 
   const links = [
     { href: `${base}`, label: "Home", icon: Home },
+    { href: `${base}/expenses`, label: "Expenses", icon: Wallet2 },
     { href: `${base}/groups`, label: "Groups", icon: Users },
-    { href: `${base}/profile`, label: "Profile", icon: User },
+    { href: `${base}/converter`, label: "Converter", icon: Calculator },
+    { href: `${base}/profile`, label: "Profile", icon: Settings },
   ]
 
   return (
@@ -72,6 +75,23 @@ export default function TopNav() {
                 )
               })}
             </nav>
+
+            {/* Auth controls */}
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button className="hidden md:inline-flex items-center rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50">
+                  Sign in
+                </button>
+              </SignInButton>
+            </SignedOut>
+
+            <SignedIn>
+              <UserButton
+                appearance={{ elements: { avatarBox: "h-8 w-8" } }}
+                userProfileMode="navigation"
+                userProfileUrl={`/${locale}/profile`}
+              />
+            </SignedIn>
 
             <LocaleSwitcher />
           </div>
