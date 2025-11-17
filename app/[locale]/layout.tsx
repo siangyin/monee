@@ -13,15 +13,13 @@ export function generateStaticParams() {
   return locales.map((locale) => ({ locale }))
 }
 
-type PageProps = Readonly<{
-  children: React.ReactNode
-  params: { locale: Locale }
-}>
-
-export default async function LocaleLayout({ children, params }: PageProps) {
+export default async function LocaleLayout({
+  children,
+  params,
+}: LayoutProps<"/[locale]">) {
   const { locale } = await params
 
-  if (!locales.includes(locale)) {
+  if (!locales.includes(locale as Locale)) {
     notFound()
   }
 
