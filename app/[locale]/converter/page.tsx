@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 import CurrencyConverter from "@/components/converter/CurrencyConverter"
 
 type PageProps = {
-  params: Promise<{ locale: Locale }>
+  params: { locale: Locale }
 }
 
 export default async function ConverterPage({ params }: PageProps) {

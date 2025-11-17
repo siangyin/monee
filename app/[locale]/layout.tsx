@@ -15,7 +15,7 @@ export function generateStaticParams() {
 
 type PageProps = Readonly<{
   children: React.ReactNode
-  params: Promise<{ locale: Locale }>
+  params: { locale: Locale }
 }>
 
 export default async function LocaleLayout({ children, params }: PageProps) {

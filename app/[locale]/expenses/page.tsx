@@ -8,7 +8,7 @@ import CategoryTag from "@/components/CategoryTag"
 import { getAuthUserWithCategories } from "@/lib/authUser"
 
 type PageProps = {
-  params: Promise<{ locale: Locale }>
+  params: { locale: Locale }
   searchParams: Promise<{
     month?: string
     category?: string

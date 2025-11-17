@@ -12,7 +12,7 @@ import {
 import GroupExpenseForm from "@/components/groups/GroupExpenseForm"
 
 type PageProps = {
-  params: Promise<{ locale: Locale; groupId: string }>
+  params: { locale: Locale }
 }
 
 export default async function GroupDetailPage({ params }: PageProps) {

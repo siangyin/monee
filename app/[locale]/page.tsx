@@ -8,7 +8,7 @@ import { getAuthUserWithCategories } from "@/lib/authUser"
 export default async function HomePage({
   params,
 }: {
-  params: Promise<{ locale: Locale }>
+  params: { locale: Locale }
 }) {
   const { locale } = await params
 

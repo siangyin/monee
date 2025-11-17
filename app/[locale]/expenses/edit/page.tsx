@@ -9,7 +9,7 @@ export default async function EditExpensePage({
   params,
   searchParams,
 }: {
-  params: Promise<{ locale: Locale }>
+  params: { locale: Locale }
   searchParams: Promise<{ id?: string }>
 }) {
   const { locale } = await params

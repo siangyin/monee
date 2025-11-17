@@ -6,7 +6,7 @@ import { getAuthUserWithCategories } from "@/lib/authUser"
 import { createGroup } from "@/app/actions/groups"
 
 type PageProps = {
-  params: Promise<{ locale: Locale }>
+  params: { locale: Locale }
 }
 
 export default async function GroupsPage({ params }: PageProps) {
